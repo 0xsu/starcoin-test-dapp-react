@@ -3,8 +3,10 @@ import BigNumber from "bignumber.js";
 import classnames from "classnames";
 import { providers } from "@starcoin/starcoin";
 import StarMaskOnboarding from "@starcoin/starmask-onboarding";
-import { Account, Mask, makeModal } from "./modal";
+import { Account, Mask, makeModal, Counter, IncreaseCounterBy } from "./modal";
 import "./style.css";
+import { getResource } from "./txs/counter.tx";
+import { COUNTER_ADDRESS, COUNTER_RESOURCE_ID } from "./txs/config";
 
 export let starcoinProvider;
 
@@ -18,6 +20,7 @@ const { isStarMaskInstalled } = StarMaskOnboarding;
 
 const onboarding = new StarMaskOnboarding({ forwarderOrigin });
 
+
 const BIG_NUMBER_NANO_STC_MULTIPLIER = new BigNumber("1000000000");
 
 const gas = {
@@ -25,10 +28,11 @@ const gas = {
   gasPrice: 1,
 };
 
+
 export const App = () => {
   // Send STC默认信息
   const [defaultToAddr, setAddr] = useState(
-    "0x46ecE7c1e39fb6943059565E2621b312"
+    "0x1168e88ffc5cec53b398b42d61885bbb"
   );
   // Send STC默认信息
   const [defaultAmount, setAmount] = useState("0.001");
@@ -50,6 +54,8 @@ export const App = () => {
 
   const [isInstall, setInstall] = useState(true);
 
+  const [counter, setCounter] = useState(0);
+
   const freshConnected = useCallback(async () => {
     const newAccounts = await window.starcoin.request({
       method: "stc_requestAccounts",
@@ -57,6 +63,15 @@ export const App = () => {
     setAccount([...newAccounts]);
     setConnected(newAccounts && newAccounts.length > 0);
   }, []);
+
+  const listenMessage = useCallback(() => {
+    window.addEventListener('message', (e) => {
+      if (e.data.data && e.data.data.data && e.data.data.data.method == "starmask_chainChanged") {
+        console.log("starmask_chainChanged")
+        freshConnected()
+      }
+    })
+  }, [])
 
   useEffect(() => {
     if (!isStarMaskInstalled()) {
@@ -68,7 +83,7 @@ export const App = () => {
     }
   }, [freshConnected]);
 
-  useEffect(() => {
+  useEffect(async () => {
     try {
       starcoinProvider = new providers.Web3Provider(
         window.starcoin,
@@ -87,6 +102,7 @@ export const App = () => {
     } else {
       freshConnected();
     }
+    listenMessage()
   }, [freshConnected, isStarMaskConnected]);
 
   const handleSendSTC = useCallback(async () => {
@@ -124,6 +140,10 @@ export const App = () => {
     }
   }, [defaultToAddr, defaultExpired, defaultAmount]);
 
+  const getCounter = async () => {
+    let res = await getResource(COUNTER_ADDRESS, COUNTER_RESOURCE_ID)
+    setCounter(res.value)
+  }
   return (
     <div className="tracking-widest">
       {isInstall && (
@@ -239,6 +259,7 @@ export const App = () => {
                 </div>
 
                 {/* Contracts Function */}
+                {/* Added parts Function */}
                 <div className="mt-4 shadow-2xl rounded-2xl border-2 border-slate-50 p-2">
                   <div className="font-bold">Contract Function</div>
                   <div
@@ -256,7 +277,47 @@ export const App = () => {
                       });
                     }}
                   >
-                    0x1::TransferScripts::peer_to_peer_v2
+                    Init_counter
+                  </div>
+                  <div
+                    className="mt-4 rounded-2xl bg-blue-900 flex justify-center text-white p-4 font-bold cursor-pointer hover:bg-blue-700 duration-300"
+                    onClick={() => getCounter()}
+                  >
+                    Get Counter:{counter}
+                  </div>
+                  <div
+                    className="mt-4 rounded-2xl bg-blue-900 flex justify-center text-white p-4 font-bold cursor-pointer hover:bg-blue-700 duration-300"
+                    onClick={() => {
+                      makeModal({
+                        children: ({ onClose }) => {
+                          return (
+                            <>
+                              <Mask onClose={onClose} />
+                              <Counter />
+                            </>
+                          );
+                        },
+                      });
+                    }}
+                  >
+                    Incr_counter
+                  </div>
+                  <div
+                    className="mt-4 rounded-2xl bg-blue-900 flex justify-center text-white p-4 font-bold cursor-pointer hover:bg-blue-700 duration-300"
+                    onClick={() => {
+                      makeModal({
+                        children: ({ onClose }) => {
+                          return (
+                            <>
+                              <Mask onClose={onClose} />
+                              <IncreaseCounterBy />
+                            </>
+                          );
+                        },
+                      });
+                    }}
+                  >
+                    Incr_counter_by
                   </div>
                 </div>
               </div>
